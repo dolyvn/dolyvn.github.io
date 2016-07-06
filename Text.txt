@@ -1,0 +1,26 @@
+manage_pages
+1. Click Login with facebook on the homepage (https://cubetechapp3.github.io/)
+2. Use test user which was created by me for login: review_rkfcprn_user@tfbnw.net / testuser1
+3. In the left side menu, click minus symbol near Fanpages, name of pages which user is ower or admin will display.
+4. Click page name, information of page will show in Info tab.
+=> I use manage_pages permission to get information of page and let people manage pages.
+   
+pulish_pages
+1. Click Login with facebook on the homepage (https://cubetechapp3.github.io/)
+2. Use test user which was created by me for login: review_rkfcprn_user@tfbnw.net / testuser1
+3. In the left side menu, click minus symbol near Fanpages, name of pages which user is ower or admin will display.
+4. Click page name, then click Post tab.
+5. Fill form with message content, link and select role is CubeTech.
+6. Click button post to facebook, content will publish in timeline's page.
+=> I use pulish_pages and manage_pages permission to be able to publish as a Page.
+
+pulish_action
+1. Click Login with facebook on the homepage (https://cubetechapp3.github.io/)
+2. Use test user which was created by me for login: review_rkfcprn_user@tfbnw.net / testuser1
+3. In the left side menu, click minus symbol near Fanpages, name of pages which user is ower or admin will display.
+4. Click page name, then click Post tab.
+5. Fill form with message content, link and select role is name of user login (in case is Review Test User).
+6. Click button post to facebook, content will publish in timeline's page.
+=> I use pulish_action permission to be able to publish from within a custom composer as a user.
+
+
