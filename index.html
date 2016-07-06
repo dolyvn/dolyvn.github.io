@@ -1,0 +1,586 @@
+<!doctype html>
+
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+
+  <title>CubeTech</title>
+  <meta name="description" content="cubetech">
+  <meta name="author" content="suzunghia">
+
+  <script src="//ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+    <!-- Latest compiled and minified CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+
+    <!-- Optional theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+
+    <!-- Latest compiled and minified JavaScript -->
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="css/bootstrap-social.css" />
+  <link href="css/styles.css" rel="stylesheet" />
+  <script>
+    var fid;
+    var access_token;
+    var template_fanfage = '<li>' +
+                                '<span style="display:none" id="access_token_$temp">$pageAccessToken</span>' +
+                                '<a href="#\"" onclick="showPage($pageID, $temp1);">' +
+                                    '<span class="glyphicon glyphicon-share-alt"></span>' +
+                                    '$pageName' +
+						        '</a>' +
+                            '</li>';
+
+    var template_inbox = '<li class="left clearfix">' +
+                            '<div class="clearfix">' +
+                                '<div class="header">' +
+                                    '<strong class="primary-font">$name</strong>' +
+                                    '</div>$msg</div>' +
+                                    '<div class="input-group">' +
+							            '<input id="$id" type="text" class="form-control input-md" placeholder="Type your message here...">' +
+							            '<span class="input-group-btn">' +
+								            '<button class="btn btn-success btn-md" id="btn-chat" value="$id1" onclick="replyInbox(this);">Reply</button>' +
+							            '</span>' +
+						             '</div>' +
+                           '</li>';
+    window.fbAsyncInit = function () {
+        FB.init({
+            appId: '1733285910293061',
+            xfbml: true,
+            version: 'v2.6'
+        });
+
+        FB.getLoginStatus(function (response) {
+            statusChangeCallback(response);
+        });
+
+    };
+
+    function statusChangeCallback(response) {
+        if (response.status === 'connected') {
+            dashboard();
+        }
+    }
+
+    (function (d, s, id) {
+        var js, fjs = d.getElementsByTagName(s)[0];
+        if (d.getElementById(id)) { return; }
+        js = d.createElement(s); js.id = id;
+        js.src = "//connect.facebook.net/en_US/sdk.js";
+        fjs.parentNode.insertBefore(js, fjs);
+    }(document, 'script', 'facebook-jssdk'));
+
+
+    function loginFB() {
+        FB.login(function (response) {
+            if (response.authResponse) {
+                dashboard();
+            } else {
+                console.log('User cancelled login or did not fully authorize.');
+            }
+        }, {
+            scope: 'manage_pages,publish_actions,read_page_mailboxes,read_insights,publish_pages',
+        });
+    }
+
+    function logoutFB() {
+        FB.logout(function (response) {
+            $('#loginModal').removeClass("hide");
+            $('#loginModal').addClass("show");
+            $('#admin').hide();
+            $('#sub-item').empty();
+        });
+    }
+
+    function dashboard() {
+        $('#loginModal').removeClass("show");
+        $('#loginModal').addClass("hide");
+        $('#admin').show();
+        FB.api('/me', function (response) {
+            $('#user_name').text(response.name);
+            fid = response.id;
+            $('#user_avatar').attr("src", "//graph.facebook.com/" + fid + "/picture");
+        });
+        FB.api('/me/accounts', function (response) {
+            for (var i = 0; i < response.data.length; i++) {
+                var temp;
+                temp = template_fanfage.replace('$pageName', response.data[i].name).replace('$pageID', response.data[i].id).replace('$pageAccessToken', response.data[i].access_token).replace('$temp', i).replace('$temp1', i);
+                $('#sub-item').append(temp);
+            }
+        });
+
+    }
+
+    function showPage(pageID, temp) {
+        $('#dashboard').hide();
+        clearPage();
+        var fields = "?fields=id,name,category,genre,about,description,link";
+        FB.api('/' + pageID + fields, function (response) {
+            $('#fanpages_titles').text(response.name);
+            $('#page_access_token').text($('#access_token_' + temp).text());
+            //$('#page_cover').attr("src", response.cover.source);
+            $('#page_id').text(response.id);
+            $('#page_name').text(response.name);
+            $('#page_category').text(response.category);
+            $('#page_genre').text(response.genre);
+            $('#page_about').text(response.about);
+            $('#page_description').text(response.description);
+            $('#page_link').attr("href", response.link);
+            $('#page_link').text(response.link);
+            $('#post_role').append($('<option>', { value: $('#access_token_' + temp).text() }).text(response.name));
+            $('#post_role').append($('<option>', { value: '' }).text($('#user_name').text()));
+        });
+        $('#manager_page').show();
+        loadInbox();
+        showInsight();
+    }
+
+    function clearPage() {
+        $('#fanpages_titles').text('');
+        $('#page_access_token').text('');
+        //$('#page_cover').attr("src", response.cover.source);
+        $('#page_id').text('');
+        $('#page_name').text('');
+        $('#page_category').text('');
+        $('#page_genre').text('');
+        $('#page_about').text('');
+        $('#page_description').text('');
+        $('#page_link').attr("href", '');
+        $('#page_link').text('');
+        $('#post_role').empty();
+    }
+
+    function showDashboard() {
+        $('#dashboard').show();
+        $('#manager_page').hide();
+    }
+
+    function postMsg() {
+        var pageID = $('#page_id').text();
+        var access_token = $('#post_role').val();
+        var data;
+        if (access_token != "") {
+            data = { "access_token": access_token, "message": $('#post_msg').val(), "link": $('#post_link').val() };
+        } else {
+            data = { "message": $('#post_msg').val(), "link": $('#post_link').val() };
+        }
+        FB.api('/' + pageID + '/feed', 'POST', data, function (response) {
+            if (response && !response.error) {
+                alert("POST SUCCESS");
+            }
+        });
+    }
+
+    function loadInbox() {
+        var pageID = $('#page_id').text();
+        var access_token = $('#page_access_token').text();
+        var listMsg = [];
+        var sender;
+        var from = $('#page_name').text();
+        var data = { access_token: access_token }
+        var data2 = { access_token: access_token, fields: 'senders,messages' };
+        var data3 = { access_token: access_token, fields: 'from,message,created_time' };
+        FB.api('/' + pageID + '/conversations', 'GET', data, function (response) {
+            for (var index = 0; index < response.data.length; index++) {
+                FB.api('/' + response.data[index].id, 'GET', data2, function (response) {
+                    for (var idx = 0; idx < response.senders.data.length; idx++) {
+                        if (response.senders.data[idx].name != from) {
+                            sender = response.senders.data[idx].name;
+                            break;
+                        }
+                    }
+                    var id = response.id;
+                    listMsg.push({ name: sender, msg: '', id: response.id, time:'' });
+                    for (var i = 0; i < response.messages.data.length; i++) {
+                        FB.api('/' + response.messages.data[i].id, 'GET', data3, function (response) {
+                            for (var m = 0; m < listMsg.length; m++) {
+                                if (listMsg[m].id == id) {
+                                    if (response.message.trim().length > 0) {
+                                        listMsg[m].msg += '$' + response.message;
+                                        listMsg[m].time += '$' + response.created_time;
+                                        if (response.from.name == from) {
+                                            listMsg[m].msg += '&1';
+                                        }
+                                    }
+                                    break;
+                                }
+                            }           
+                        });
+                    }
+                });
+            }
+        });
+        setTimeout(function () { displayInbox(listMsg); }, 3000);
+    }
+
+    function displayInbox(listMsg) {
+        var temp;
+        var messages;
+        var times;
+        $('#inbox').empty();
+        for (var i = 0; i < listMsg.length; i++) {
+            temp = template_inbox;
+            temp = temp.replace('$name', listMsg[i].name);
+            var tempMsg = '';
+            messages = listMsg[i].msg.split('$').filter(function (el) { return el.trim().length != 0 });
+            times = listMsg[i].time.split('$').filter(function (el) { return el.trim().length != 0 });
+            var array = sortTime(times, messages);
+            for (var j = 0; j < array.length; j++) {
+                if (messages[array[j]].split('&').length > 1) {
+                    tempMsg = tempMsg + '' + '<p class="text-right">' + messages[array[j]].split('&')[0] + '</p>';
+                } else {
+                    tempMsg = tempMsg + '' + '<p>' + messages[array[j]] + '</p>';
+                }
+            }
+            temp = temp.replace('$msg', tempMsg).replace('$id', listMsg[i].id).replace('$id1', listMsg[i].id);
+            $('#inbox').append(temp);
+        }
+    }
+
+    function sortTime(times, messages) {
+        var array=[];
+        var count = 0;
+        var temp;
+        var num;
+        for (var i = 0; i < times.length; i++) {
+            array.push(count);
+            count++;
+        }
+
+        for (var i = 0; i < times.length - 1; i++) {
+            for (var j = i+ 1; j < times.length; j++) {
+                if (times[j] < times[i]) {
+                    temp = times[i];
+                    times[i] = times[j];
+                    times[j] = temp;
+
+                    num = array[i];
+                    array[i] = array[j];
+                    array[j] = num;
+                }
+            }
+        }
+        return array;
+    }
+
+    function replyInbox(id) {
+        var id = id.getAttribute("value");
+        var access_token = $('#page_access_token').text();
+        var data = { message: document.getElementById(id).value, access_token: access_token };
+        FB.api('/' + id + '/messages', 'POST', data, function (response) {
+            if (response && !response.error) {
+                alert("POST SUCCESS");
+                loadInbox();
+            }
+        });
+    }
+
+    function showInsight() {
+        var pageID = $('#page_id').text();
+        var access_token = $('#page_access_token').text();
+        var data = { access_token: access_token };
+        var temp;
+        var value;
+        $('#insights').empty();
+        FB.api('/' + pageID + '/insights', 'GET', data, function (response) {
+            for (var i = 0; i < response.data.length; i++) {
+                value = 0;
+                try {
+                    for (var j = 0; j < response.data[i].values.length; j++) {
+                        value += parseInt(response.data[i].values[j].value);
+                    }
+                }
+                catch (err) {
+                }
+                if (value > 0) {
+                    temp = "<tr><td>" + response.data[i].title + "</td>";
+                    temp += "<td>" + response.data[i].description + "</td>";
+                    temp += "<td>" + value + "</td></tr>";
+                    $('#insights').append(temp);
+                }
+            }
+        });
+    }
+</script>
+</head>
+
+<body>
+  <!--login modal-->
+<div id="loginModal" class="modal show" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal" aria-hidden="true">×</button>
+                <img src="img/logo.png" style="height: 80px; width: 80px; display: block; margin-left: auto; margin-right: auto;" />
+            </div>
+            <div class="modal-body">
+                <a class="btn btn-block btn-social btn-facebook" onclick="loginFB();">
+                    <i class="fa fa-facebook"></i>Connect with Facebook
+                </a>
+            </div>
+            <div class="modal-footer">
+                <div class="col-md-12">
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!--navbar -->
+<div id="admin" style="display: none">
+    <nav class="navbar navbar-inverse navbar-fixed-top" role="navigation">
+        <div class="container-fluid">
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#sidebar-collapse">
+                    <span class="sr-only">Toggle navigation</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+                <a class="navbar-brand" href="#"><span>CubeTech</span>Admin</a>
+                <ul class="user-menu">
+                    <li class="dropdown pull-right">
+                        <a href="#" class="dropdown-toggle" data-toggle="dropdown" style="background: 0 0;">
+                            <img id="user_avatar" src="..." style="width: 16px; height: 16px" /><span id="user_name" style="padding-left: 5px">User</span> <span class="caret"></span></a>
+                        <ul class="dropdown-menu" role="menu">
+                            <li><a href="#" onclick="logoutFB()"><span class="glyphicon glyphicon-log-out"></span><span style="padding-left: 5px">Logout</span></a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+
+        </div>
+        <!-- /.container-fluid -->
+    </nav>
+
+    <!-- side menu -->
+
+    <div id="sidebar-collapse" class="col-sm-3 col-lg-2 sidebar">
+        <ul class="nav menu">
+            <li class="active"><a href="#" onclick="showDashboard();"><span class="glyphicon glyphicon-dashboard"></span>Dashboard</a></li>
+            <li class="parent">
+                <a href="#">
+                    <span class="glyphicon glyphicon-list"></span>Fanpages<span data-toggle="collapse" href="#sub-item" class="icon pull-right"><em class="glyphicon glyphicon-s glyphicon-plus"></em></span>
+                </a>
+                <ul class="children collapse" id="sub-item">
+                </ul>
+            </li>
+            <li role="presentation" class="divider"></li>
+        </ul>
+    </div>
+
+    <!--main activity -->
+    <div id="dashboard">
+        <div class="col-sm-9 col-sm-offset-3 col-lg-10 col-lg-offset-2 main">
+            <div class="row">
+                <ol class="breadcrumb">
+                    <li><a href="#"><span class="glyphicon glyphicon-home"></span></a></li>
+                    <li class="active">Dashboard</li>
+                </ol>
+            </div>
+            <!--/.row-->
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <h1 class="page-header">Dashboard</h1>
+                </div>
+            </div>
+            <!--/.row-->
+
+            <div class="row">
+                <div class="col-xs-16 col-md-8 col-lg-4">
+                    <div class="panel panel-orange panel-widget">
+                        <div class="row no-padding">
+                            <div class="col-sm-3 col-lg-5 widget-left">
+                                <em class="glyphicon glyphicon-comment glyphicon-l"></em>
+                            </div>
+                            <div class="col-sm-13 col-lg-7 widget-right">
+                                <div class="large">52</div>
+                                <div class="text-muted">Comments</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-16 col-md-8 col-lg-4">
+                    <div class="panel panel-teal panel-widget">
+                        <div class="row no-padding">
+                            <div class="col-sm-3 col-lg-5 widget-left">
+                                <em class="glyphicon glyphicon-user glyphicon-l"></em>
+                            </div>
+                            <div class="col-sm-13 col-lg-7 widget-right">
+                                <div class="large">24</div>
+                                <div class="text-muted">New Users</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xs-16 col-md-8 col-lg-4">
+                    <div class="panel panel-red panel-widget">
+                        <div class="row no-padding">
+                            <div class="col-sm-3 col-lg-5 widget-left">
+                                <em class="glyphicon glyphicon-stats glyphicon-l"></em>
+                            </div>
+                            <div class="col-sm-13 col-lg-7 widget-right">
+                                <div class="large">25.2k</div>
+                                <div class="text-muted">Visitors</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--/.row-->
+        </div>
+        <!--/.row-->
+    </div>
+    <div id="manager_page" style="display: none;">
+        <div class="col-sm-9 col-sm-offset-3 col-lg-10 col-lg-offset-2 main">
+            <div class="row">
+                <ol class="breadcrumb">
+                    <li><a href="#"><span class="glyphicon glyphicon-home"></span></a></li>
+                    <li class="active">Fanpages</li>
+                </ol>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <h1 id="fanpages_titles" class="page-header">Dashboard</h1>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="panel panel-default">
+                        <div class="panel-body tabs">
+                            <ul class="nav nav-pills">
+                                <li class="active"><a href="#pilltab1" data-toggle="tab">Info</a></li>
+                                <li><a href="#pilltab2" data-toggle="tab">Post</a></li>
+                                <li><a href="#pilltab3" data-toggle="tab" onclick="loadInbox();">Messages</a></li>
+                                <li><a href="#pilltab4" data-toggle="tab" onclick="showInsight();">Insights</a></li>
+                            </ul>
+
+                            <div class="tab-content">
+                                <div class="tab-pane fade in active" id="pilltab1">
+                                    <hr />
+                                    <div class="row">
+                                        <div class="col-lg-12" style="display: none">
+                                            <img id="page_cover" src="..." style="width: 100%; height: 100%" />
+                                        </div>
+                                    </div>
+                                    <div style="display: none" id="page_access_token"></div>
+                                    <div class="row">
+                                        <div class="col-xs-12 col-md-6 col-lg-3">
+                                            Facebook Page ID
+                                        </div>
+                                        <div class="col-xs-20 col-md-10 col-lg-7" id="page_id">
+                                        </div>
+                                    </div>
+                                    <hr />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-md-6 col-lg-3">
+                                            Name
+                                        </div>
+                                        <div class="col-xs-20 col-md-10 col-lg-7" id="page_name">
+                                        </div>
+                                    </div>
+                                    <hr />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-md-6 col-lg-3">
+                                            Category
+                                        </div>
+                                        <div class="col-xs-20 col-md-10 col-lg-7" id="page_category">
+                                        </div>
+                                    </div>
+                                    <hr />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-md-6 col-lg-3">
+                                            Genre
+                                        </div>
+                                        <div class="col-xs-20 col-md-10 col-lg-7" id="page_genre">
+                                        </div>
+                                    </div>
+                                    <hr />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-md-6 col-lg-3">
+                                            Short Description
+                                        </div>
+                                        <div class="col-xs-20 col-md-10 col-lg-7" id="page_about">
+                                        </div>
+                                    </div>
+                                    <hr />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-md-6 col-lg-3">
+                                            Description
+                                        </div>
+                                        <div class="col-xs-20 col-md-10 col-lg-7" id="page_description">
+                                        </div>
+                                    </div>
+                                    <hr />
+                                    <div class="row">
+                                        <div class="col-xs-12 col-md-6 col-lg-3">
+                                            Link
+                                        </div>
+                                        <div class="col-xs-20 col-md-10 col-lg-7">
+                                            <a id="page_link" href="..."></a>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="pilltab2">
+                                    <div class="panel panel-default">
+                                        <div class="panel-heading">Form</div>
+                                        <div class="panel-body">
+                                            <div class="form-group">
+                                                <label>Message</label>
+                                                <input class="form-control" placeholder="Input message to post" id="post_msg">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Link</label>
+                                                <input class="form-control" placeholder="Input link to post" id="post_link">
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Select role</label>
+                                                <select class="form-control" id="post_role">
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary pull-right" onclick="postMsg();">Post to Facebook</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="pilltab3">
+                                    <div class="panel panel-default chat">
+                                        <div class="panel-heading" id="accordion"><span class="glyphicon glyphicon-comment"></span>Chat</div>
+                                        <div class="panel-body">
+                                            <ul id="inbox">
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="tab-pane fade" id="pilltab4">
+                                    <div class="row">
+                                        <div class="col-lg-12">
+                                            <table class="table">
+                                                <thead>
+                                                    <tr>
+                                                        <th>Metrics</th>
+                                                        <th>Decriptions</th>
+                                                        <th>Value</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody id="insights">
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!--/.panel-->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>
